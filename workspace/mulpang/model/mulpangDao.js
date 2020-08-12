@@ -47,7 +47,7 @@ module.exports.couponList = function(cb){
 		position: 1
 	};
   
-  var count = 3;
+  var count = 0;
   var offset = 0;
 	// TODO 전체 쿠폰 목록을 조회한다.
   db.coupon.find(query)
@@ -62,7 +62,7 @@ module.exports.couponList = function(cb){
 };
 
 // 쿠폰 상세 조회
-module.exports.couponDetail = function(_id, cb){
+module.exports.couponDetail = function(io, _id, cb){
 	// coupon, shop, epilogue 조인
 	db.coupon.aggregate([{
     $match: {_id: ObjectId(_id)}
@@ -74,7 +74,6 @@ module.exports.couponDetail = function(_id, cb){
       foreignField : '_id', // shop._id
       as : 'shop'
     }
-
   }, {
     // shop 조인 결과(배열)를 객체로 변환
     $unwind : '$shop' 
@@ -86,17 +85,19 @@ module.exports.couponDetail = function(_id, cb){
       foreignField : 'couponId', // epilogue.couponId
       as : 'epilogueList'
     }
-
   }]).toArray(function(err, data){
     var coupon = data[0];
     clog.debug(coupon);
     cb(coupon);
+    
+    // 뷰 카운트를 하나 증가시킨다.
+    db.coupon.updateOne({_id: coupon._id}, {$inc: {viewCount: 1}}, function() {
+      // 웹소켓으로 수정된 조회수 top5를 전송한다.
+      topCoupon('viewCount', function(data) {
+        io.emit('top5', data);
+      });
+    });
   });
-	// 뷰 카운트를 하나 증가시킨다.
-	
-	// 웹소켓으로 수정된 조회수 top5를 전송한다.
-	
-
 };
 
 // 구매 화면에 보여줄 쿠폰 정보 조회
@@ -147,7 +148,15 @@ module.exports.buyCoupon = function(params, cb){
 	
 // 추천 쿠폰 조회
 var topCoupon = module.exports.topCoupon = function(condition, cb){
-	
+  var query = {};
+  var fields = {couponName: 1};
+  fields[condition] = 1;
+  var order = {};
+  order[condition] = -1; // -1 : 내림차순, 1 : 오름차순
+
+  db.coupon.find(query, {projection: fields, limit: 5, sort: order}).toArray(function(err, data) {
+    cb(data);
+  });
 };
 
 // 지정한 쿠폰 아이디 목록을 받아서 남은 수량을 넘겨준다.
