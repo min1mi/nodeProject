@@ -2,3 +2,6 @@
 **/package-lock.json
 **/.settings
 **/.project
+**/MongoDB
+**/public/tmp
+**/public/image

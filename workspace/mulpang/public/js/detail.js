@@ -30,7 +30,10 @@ function setCloseEvent(){
 
 // 관심쿠폰 등록 이벤트
 function setAddCartEvent(){
-	
+	$('.btn_add_cart').click(function(){
+    var coupon = $(this).parent();
+    addCart(coupon);
+  });
 }
 
 // 관심 쿠폰 등록(로컬 스토리지에 저장)
@@ -40,7 +43,12 @@ function addCart(coupon){
   var couponImg = coupon.children('.list_img').attr('src');
   
   // TODO 관심 쿠폰 목록을 localStorage에서 꺼낸다.
-  
+  var cart = localStorage.getItem('cart');
+  if(cart) {
+    cart = JSON.parse(cart);
+  } else {
+    cart = {length: 0};
+  }
   
   if(cart.length == 5){
     alert('관심 쿠폰은 최대 5개 등록 가능합니다.');
@@ -48,8 +56,18 @@ function addCart(coupon){
     alert(couponName + '\n이미 등록되어 있습니다.');
   }else{
     // TODO 관심 쿠폰을 localStorage에 저장한다.
+    cart[couponId] = {
+      name: couponName,
+      img: couponImg,
+      noti: 10
+    }
+    cart.length++;
+    localStorage.setItem('cart', JSON.stringify(cart));
+    alert(couponName + '\n 관심쿠폰으로 등록 되었습니다.');
+    common.cart.showCart();
 
     // TODO 알림메세지 사용 여부 체크
+    Notification.requestPermission();
     
   }
 }

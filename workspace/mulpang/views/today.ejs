@@ -9,25 +9,8 @@
 			<section id="search">
 				<h1>쿠폰 검색</h1>
 				<form id="coupon_search" name="coupon_search" action="#" method="get">
-					<label for="search_date">기간</label>
-					<select id="search_date" name="date">
-            <option value="all">전체</option>
-            <option value="buyable" selected>구매가능</option>						
-            <option value="past">지난쿠폰</option>
-					</select>
-					<label for="search_location">지역</label>
-					<select id="search_location" name="location">
-						<option value="">전체</option>
-						<option>강남</option>
-						<option>압구정</option>
-						<option>논현</option>
-						<option>홍대</option>
-						<option>신촌</option>
-						<option>기타</option>
-					</select>
-					<label for="search_keyword">키워드</label>
-					<input type="text" id="search_keyword" name="keyword" value="">
-					<input type="submit" value="검색">
+          <%- include('layout/search') %>
+          <input type="submit" value="검색">
 				</form>
 			</section>
 			<section id="coupon">
@@ -54,14 +37,20 @@
               <h1>등록된 상품이 없습니다.</h1>
             </article>
           <% } %>
-          
-      
 				</div>
 			</section>
-			<div id="coupon_control">
-        <button type="button" class="btn_pre">이전</button>
-				<a href="/today2.html"><button type="button" class="btn_next">다음</button></a>		
-			</div>
+      <div id="coupon_control">
+        <% if(list.page.pre){ %>
+          <a href="<%= list.page.pre %>"><button type="button" class="btn_pre">이전</button></a>
+        <% }else{ %>
+          <button type="button" class="btn_pre">이전</button>
+        <% } %>
+        <% if(list.page.next){ %>
+          <a href="<%= list.page.next %>"><button type="button" class="btn_next">다음</button></a>    
+        <% }else{ %>
+          <button type="button" class="btn_next">다음</button>
+        <% } %> 
+      </div>
 		</div>
     <%- include('layout/footer') %>
 	</div>

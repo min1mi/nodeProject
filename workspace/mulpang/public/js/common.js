@@ -9,8 +9,25 @@ $(function(){
 
 // 관심쿠폰을 보여준다.
 common.cart.showCart = function(){
-  // var cartElement = '<li data-couponid="' + couponId + '"><a href="/coupons/' + couponId + '"><img src="' + coupon.img + '" alt="' + coupon.name + '"></a><button class="cart_close">관심쿠폰 삭제</button></li>';
-  
+  var cartList = $('#cart > ul').empty();
+  var cart = localStorage.getItem('cart');
+  if(cart) {
+    cart = JSON.parse(cart);
+    for(var couponId in cart) {
+      if(couponId != 'length') {
+        var coupon = cart[couponId];
+        var cartElement = '<li data-couponid="' + couponId + '"><a href="/coupons/' + couponId + '"><img src="' + coupon.img + '" alt="' + coupon.name + '"></a><button class="cart_close">관심쿠폰 삭제</button></li>';
+        cartList.append(cartElement);
+      }
+    }
+    $('.interest_cnt').text(cart.length);
+    common.cart.setRemoveCartEvent();
+
+    // 사용자가 알림 승인을 했을 때만 보여줌
+    if(Notification.permission == 'granted') {
+      common.cart.requestQuantity();
+    }
+  }
 };
 
 // 관심쿠폰 삭제 이벤트
@@ -64,8 +81,12 @@ common.cart.requestQuantity = function(){
 };
 
 // 바탕화면 알림 서비스를 보여준다.
-common.cart.showNoti = function(noti){	
-	
+common.cart.showNoti = function(noti){
+  var notify = new Notification('마감임박!!!!!', noti);
+  notify.onclick = function(){
+    notify.close();
+    window.open('/coupons/' + this.tag, '_blank');
+  }
 };
 
 
@@ -76,5 +97,21 @@ $(function(){
 
 // 로그인 이벤트 등록
 common.login.setLoginEvent = function(){
-  
+  $('form#simple_login').submit(function(){
+    $.ajax({
+      url: '/users/simpleLogin',
+      type: 'post',
+      data: $(this).serialize(),
+      success: function(result){
+        if(result.errors) {
+          alert(result.errors.message);
+        } else {
+          alert('로그인 되었습니다.');
+          location.reload();
+        }
+      }
+    });
+    // form submit 동작 취소
+    return false;
+  });
 };

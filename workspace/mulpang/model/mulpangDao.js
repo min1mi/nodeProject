@@ -19,20 +19,48 @@ MongoClient.connect('mongodb://localhost:27017', { useNewUrlParser: true, useUni
 });
 
 // 쿠폰 목록조회
-module.exports.couponList = function(cb){
+module.exports.couponList = function(qs, cb){
+  qs = qs || {};
+  var now = MyUtil.getDay();
 	// 검색 조건
 	var query = {};
-	// 1. 판매 시작일이 지난 쿠폰, 구매 가능 쿠폰(기본 검색조건)	
-	// 2. 전체/구매가능/지난쿠폰
-	// 3. 지역명	
-	// 4. 검색어	
+  // 1. 판매 시작일이 지난 쿠폰, 구매 가능 쿠폰(기본 검색조건)	
+  query['saleDate.start'] = {$lte: now};
+  query['saleDate.finish'] = {$gte: now};
+
+  // 2. 전체/구매가능/지난쿠폰
+  switch(qs.date){
+    case 'all':
+      delete query['saleDate.finish'];  
+      break;
+    case 'past':
+      query['saleDate.finish'] = {$lt: now};
+      break;
+  }
+  // 3. 지역명	
+  if(qs.location){
+    query['region'] = qs.location;
+  }
+  // 4. 검색어	
+  if(qs.keyword && qs.keyword.trim() != ''){
+    var regExp = new RegExp(qs.keyword, 'i');
+    query['$or'] = [{couponName: regExp}, {desc: regExp}];
+  }
 
 	// 정렬 옵션
 	var orderBy = {};
-	// 1. 사용자 지정 정렬 옵션	
-	// 2. 판매 시작일 내림차순(최근 쿠폰)	
-	// 3. 판매 종료일 오름차순(종료 임박 쿠폰)
+  // 1. 사용자 지정 정렬 옵션	
+  if(qs.order) {
+    orderBy[qs.order] = -1; // -1: 내림차순, 1: 오름차순
+  }
 
+  // 2. 판매 시작일 내림차순(최근 쿠폰)	
+  orderBy['saleDate.start'] = -1;
+
+	// 3. 판매 종료일 오름차순(종료 임박 쿠폰)
+  orderBy['saleDate.finish'] = 1;
+
+  console.log(query);
 	// 출력할 속성 목록
 	var fields = {
 		couponName: 1,
@@ -49,16 +77,23 @@ module.exports.couponList = function(cb){
   
   var count = 0;
   var offset = 0;
+  if(qs.page) {
+    count = 5;
+    offset = (qs.page - 1) * count;
+  }
 	// TODO 전체 쿠폰 목록을 조회한다.
-  db.coupon.find(query)
-           .project(fields)
-           .sort(orderBy)
-           .skip(offset)
-           .limit(count)
-           .toArray(function(err, data){
-             clog.info(data.length);
-             cb(data);
-           });
+  var cursor = db.coupon.find(query);
+  cursor.count(function(err, totalCount){
+    cursor.project(fields)
+          .sort(orderBy)
+          .skip(offset)
+          .limit(count)
+          .toArray(function(err, data){
+            clog.info(data.length);
+            data.totalPage = Math.floor((totalCount + count - 1)/count);
+            cb(data);
+          });
+  });
 };
 
 // 쿠폰 상세 조회
@@ -149,6 +184,11 @@ module.exports.buyCoupon = function(params, cb){
 // 추천 쿠폰 조회
 var topCoupon = module.exports.topCoupon = function(condition, cb){
   var query = {};
+  var now = MyUtil.getDay();
+  // 1. 판매 시작일이 지난 쿠폰, 구매 가능 쿠폰(기본 검색조건)	
+  query['saleDate.start'] = {$lte: now};
+  query['saleDate.finish'] = {$gte: now};
+
   var fields = {couponName: 1};
   fields[condition] = 1;
   var order = {};
@@ -161,7 +201,14 @@ var topCoupon = module.exports.topCoupon = function(condition, cb){
 
 // 지정한 쿠폰 아이디 목록을 받아서 남은 수량을 넘겨준다.
 module.exports.couponQuantity = function(coupons, cb){
-
+  coupons = coupons.map(function(couponId){
+    return ObjectId(couponId);
+  });
+  // $:in : coupons 배열에 하나라도 포함되느냐?
+  db.coupon.find({_id: {$in: coupons}}, {projection: {quantity: 1, buyQuantity: 1, couponName: 1}})
+           .toArray(function(err, data){
+             cb(data);
+           });
 };
 
 // 임시로 저장한 프로필 이미지를 회원 이미지로 변경한다.
@@ -170,19 +217,41 @@ function saveImage(tmpFileName, profileImage){
   var profileDir = path.join(__dirname, '..', 'public', 'image', 'member');
   var org = path.join(tmpDir, tmpFileName);
   var dest = path.join(profileDir, profileImage);
-	// TODO 임시 이미지를 member 폴더로 이동시킨다.
-	
+  
+  // TODO 임시 이미지를 member 폴더로 이동시킨다.
+  fs.rename(org, dest, function(err){
+    if(err) clog.error(err);
+  });
 }
 
 // 회원 가입
 module.exports.registMember = function(params, cb){
-	
+	var member = {
+    _id: params._id, 
+    password: params.password, 
+    profileImage: params._id, 
+    regDate: MyUtil.getTime()
+  };
+
+  db.member.insertOne(member, function(err, result){
+    if(err && err.code == 11000){
+      err = {message: '이미 등록된 이메일입니다.'};
+    } else {
+      saveImage(params.tmpFileName, member.profileImage);
+    }
+    cb(err, result);
+  });
 };
 
 // 로그인 처리
 module.exports.login = function(params, cb){
 	// TODO 지정한 아이디와 비밀번호로 회원 정보를 조회한다.
-	
+	db.member.findOne(params, {projection: {profileImage: 1}}, function(err, user){
+    if(!user) { // 로그인 실패한 경우
+      err = {message: '아이디와 비밀번호를 확인하세요.'};
+    }
+    cb(err, user);
+  });
 };
 
 // 회원 정보 조회
