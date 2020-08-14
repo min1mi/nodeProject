@@ -2,6 +2,7 @@ var express = require('express');
 var router = express.Router();
 var model = require('../model/mulpangDao');
 var MyUtil = require('../utils/myutil');
+var checkLogin = require('../middleware/checklogin');
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -39,7 +40,7 @@ router.get('/coupons/:_id', function(req, res, next){
 });
 
 // 구매하기 화면
-router.get('/purchase/:_id', function(req, res, next){
+router.get('/purchase/:_id', checkLogin, function(req, res, next){
   var _id = req.params._id;
   model.buyCouponForm(_id, function(coupon){
     res.render('buy', { title: coupon.couponName, css: 'detail.css', js: 'buy.js', coupon });
@@ -47,10 +48,12 @@ router.get('/purchase/:_id', function(req, res, next){
 });
 
 // 쿠폰 구매 요청
-router.post('/purchase', function(req, res, next){
+router.post('/purchase', checkLogin, function(req, res, next){
+  req.body.userid = req.session.user._id;
   model.buyCoupon(req.body, function(err, result){
     if(err) {
-      res.json({errors: err});
+      // res.json({errors: err});
+      next(err);
     } else {
       res.end('success'); 
     }

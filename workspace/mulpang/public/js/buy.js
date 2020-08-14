@@ -21,7 +21,7 @@ function setBuyEvent(){
       data: body,
       success: function(result) {
         if(result.errors) {
-          alert(result.errors.massage);
+          alert(result.errors.message);
         } else {
           alert('구매가 완료 되었습니다.');
           location.href = '/'; 
