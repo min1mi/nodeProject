@@ -1,6 +1,6 @@
 # MULTICAMPUS - 실전! HTML5 프로젝트
 
-**NodeJS, HTML5, MongoDB를 사용하여 서버에서부터 클라이언트까지 개발한 프로젝트입니다.
+** NodeJS, HTML5, MongoDB를 사용하여 서버에서부터 클라이언트까지 개발한 프로젝트입니다.
 
 
 # 교육 기간
@@ -24,6 +24,6 @@
 - Tool : Eclipse, Atom
 ```
 # 상세기능 설명 및 화면
-1. [Sign Up/Login](./Readme/Page/Sing_Up_Login.md)<br>
+1. [Sign Up/Login](주소 url)<br>
 <br><br>
 
